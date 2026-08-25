@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тренажёр: подбор СИЗ по ГОСТ и ТР ТС 019/2011</title>
+<!--
+  Учебный тренажёр «Подбор СИЗ в соответствии с ГОСТ и ТР ТС 019/2011»
+  Чистый HTML + CSS + JS. Внешние библиотеки не используются (при необходимости подключаются через CDN).
+  Нормативная база:
+    • ТР ТС 019/2011 «О безопасности средств индивидуальной защиты» (Решение КТС от 09.12.2011 № 878);
+    • Перечень стандартов, применение которых на добровольной основе обеспечивает соблюдение ТР ТС 019/2011;
+    • ГОСТ EN 397-2020 (каски, действует с 01.10.2021, взамен ГОСТ EN 397-2012);
+    • ГОСТ 12.4.253-2013 (СИЗ глаз, с Изменением № 1 от 01.07.2022);
+    • ГОСТ 12.4.252-2013 (перчатки, действует с 01.03.2014, взамен ГОСТ Р 12.4.246-2008);
+    • ГОСТ 12.4.281-2014 (сигнальная одежда повышенной видимости, классы 1–3);
+    • ГОСТ Р ЕН 361-2008 (страховочные привязи, действует с 01.07.2009, взамен ГОСТ Р 12.4.224-99).
+  Масштабирование: все размеры заданы в em от базовой единицы, вычисляемой через ResizeObserver
+  (u = min(ширина/56, высота/60)) — содержимое и читаемость сохраняются при любом размере.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #0a0f1e;
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+
+  #app {
+    position: relative; width: 100vw; height: 600px; max-height: 100vh;
+    overflow: hidden; display: flex; flex-direction: column;
+    color: #e8edf7; font-size: 10px; /* переопределяется скриптом */
+    background:
+      radial-gradient(120em 60em at 85% -20%, rgba(59,90,160,.35), transparent 60%),
+      radial-gradient(90em 50em at -10% 110%, rgba(251,191,36,.10), transparent 55%),
+      linear-gradient(180deg, #0f1730 0%, #0b1122 100%);
+    user-select: none;
+  }
+  .hz { flex: 0 0 auto; height: .55em;
+    background: repeating-linear-gradient(135deg, #fbbf24 0 1.1em, #141c2f 1.1em 2.2em); }
+
+  /* ── шапка ─────────────────────────────────────── */
+  header { flex: 0 0 auto; display: flex; align-items: center; gap: 1em;
+    padding: 1em 1.7em .55em; }
+  .logo { width: 2.6em; height: 2.6em; flex: 0 0 auto; }
+  .logo svg, .ic svg, .gauge svg { width: 100%; height: 100%; display: block; }
+  .brand b { display: block; font-size: 1.35em; letter-spacing: .04em; }
+  .brand span { display: block; font-size: .9em; color: #8fa0bf; margin-top: .15em; }
+  .badge-tr { margin-left: auto; flex: 0 0 auto; background: rgba(251,191,36,.12);
+    border: 1px solid rgba(251,191,36,.5); color: #fbbf24; font-size: .95em;
+    font-weight: 700; padding: .4em .8em; border-radius: .55em; white-space: nowrap; }
+  .score { flex: 0 0 auto; background: #16223f; border: 1px solid #263452;
+    color: #cbd5e1; font-size: .95em; font-weight: 600; padding: .4em .8em;
+    border-radius: .55em; white-space: nowrap; }
+  .pbar { flex: 0 0 auto; height: .5em; background: #1a2542; margin: 0 1.7em .2em;
+    border-radius: 1em; overflow: hidden; }
+  .pbar i { display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, #f59e0b, #fde68a); border-radius: 1em;
+    transition: width .35s ease; }
+
+  main { flex: 1 1 auto; min-height: 0; padding: .6em 1.7em 1.5em;
+    display: flex; flex-direction: column; }
+  .screen { flex: 1; min-height: 0; display: flex; flex-direction: column;
+    animation: fade .3s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(.5em); } }
+
+  /* ── стартовый экран ───────────────────────────── */
+  .intro { max-width: 64em; width: 100%; margin: 0 auto; gap: 1em; }
+  .intro h1 { font-size: 2em; line-height: 1.2; }
+  .intro h1 em { font-style: normal; color: #fbbf24; }
+  .sub { color: #9fb0cc; font-size: 1.12em; line-height: 1.4; }
+  .tiles { display: flex; gap: .8em; flex-wrap: wrap; justify-content: center; }
+  .tile { flex: 1 1 9.5em; max-width: 13em; background: #131c33; border: 1px solid #263452;
+    border-radius: .9em; padding: .8em .6em .7em; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: .3em; }
+  .tile .ic { width: 3.4em; height: 3.4em; }
+  .tile b { font-size: 1em; line-height: 1.15; }
+  .tile span { font-size: .8em; color: #8fa0bf; line-height: 1.2; }
+  .chips { display: flex; gap: .7em; flex-wrap: wrap; justify-content: center; }
+  .startrow { margin-top: auto; }
+  .chip { background: #131c33; border: 1px solid #263452; border-radius: .6em;
+    padding: .5em .9em; font-size: .98em; color: #cbd5e1; }
+  .chip b { color: #fbbf24; }
+  .startrow { display: flex; align-items: center; gap: 1.2em; justify-content: center; flex-wrap: wrap; }
+  .hint { font-size: .92em; color: #7c8aa5; }
+
+  /* ── экран вопроса ─────────────────────────────── */
+  .quiz { max-width: 58em; width: 100%; margin: 0 auto; }
+  .qtag { display: flex; align-items: center; gap: .9em; margin-bottom: .7em; }
+  .qnum { background: #16223f; border: 1px solid #263452; border-radius: .55em;
+    padding: .35em .7em; font-size: .95em; font-weight: 700; color: #e8edf7; white-space: nowrap; }
+  .qcat { color: #fbbf24; font-size: 1em; font-weight: 600; }
+  .qtext { display: flex; gap: .9em; align-items: flex-start; margin-bottom: 1em; }
+  .qtext .ic { flex: 0 0 auto; width: 3em; height: 3em; margin-top: .1em; }
+  .qtext p { font-size: 1.32em; font-weight: 600; line-height: 1.32; }
+  .opts { display: flex; flex-direction: column; gap: .65em; }
+  .opt { display: flex; gap: .8em; align-items: center; text-align: left;
+    background: #131c33; border: .14em solid #263452; color: inherit;
+    padding: .7em .9em; border-radius: .7em; font-size: 1.06em; line-height: 1.28;
+    cursor: pointer; font-family: inherit; transition: border-color .15s, background .15s; }
+  .opt:hover:not(:disabled) { border-color: #3d5590; background: #172345; }
+  .opt .lt { flex: 0 0 auto; width: 1.9em; height: 1.9em; border-radius: .5em;
+    background: #1e2a48; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #fbbf24; font-size: .95em; }
+  .opt.ok { background: rgba(52,211,153,.14); border-color: #34d399; }
+  .opt.ok .lt { background: #34d399; color: #06281c; }
+  .opt.bad { background: rgba(248,113,113,.12); border-color: #f87171; }
+  .opt.bad .lt { background: #f87171; color: #2b0808; }
+  .opt:disabled { cursor: default; }
+  .qhint { margin-top: auto; padding-top: .6em; font-size: .9em; color: #66748f;
+    display: flex; align-items: center; gap: .5em; }
+  .qhint::before { content: ""; flex: 0 0 auto; width: .55em; height: .55em; border-radius: 50%;
+    background: #fbbf24; opacity: .8; }
+  .fb { margin-top: .9em; background: #101a30; border-radius: .8em; padding: .9em 1.1em;
+    border-left: .45em solid #34d399; animation: fade .25s ease; }
+  .fb.bad { border-left-color: #f87171; }
+  .fb .t { font-weight: 700; font-size: 1.14em; }
+  .fb .t.ok { color: #34d399; } .fb .t.no { color: #f87171; }
+  .fb .x { font-size: 1em; color: #b7c4dd; line-height: 1.4; margin-top: .35em; }
+  .std { display: inline-block; background: rgba(251,191,36,.12); color: #fbbf24;
+    border: 1px solid rgba(251,191,36,.4); padding: .18em .6em; border-radius: .5em;
+    font-size: .9em; font-weight: 600; margin: .55em .5em 0 0; white-space: nowrap; }
+  .nextrow { margin-top: .8em; display: flex; justify-content: flex-end; }
+
+  /* ── экран результата ──────────────────────────── */
+  .res { max-width: 58em; width: 100%; margin: auto; display: flex; gap: 2.2em;
+    align-items: center; justify-content: center; flex-wrap: wrap; }
+  .gauge { position: relative; width: 12em; height: 12em; flex: 0 0 auto; }
+  .gauge .mid { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; }
+  .gauge .mid b { font-size: 2.6em; }
+  .gauge .mid span { font-size: 1em; color: #8fa0bf; margin-top: .2em; }
+  .resinfo { flex: 0 1 26em; display: flex; flex-direction: column; gap: .8em; }
+  .resinfo h2 { font-size: 1.7em; line-height: 1.2; }
+  .resinfo .msg { color: #9fb0cc; font-size: 1.08em; line-height: 1.4; }
+  .resline { font-size: 1em; color: #cbd5e1; }
+  .resline b.g { color: #34d399; } .resline b.r { color: #f87171; }
+
+  /* ── кнопки ────────────────────────────────────── */
+  .btn { background: linear-gradient(180deg, #fcd34d, #f59e0b); color: #241a03;
+    border: 0; font-family: inherit; font-weight: 700; font-size: 1.2em;
+    padding: .75em 1.6em; border-radius: .65em; cursor: pointer;
+    box-shadow: 0 .3em 1.2em rgba(245,158,11,.35); transition: transform .1s, filter .15s; }
+  .btn:hover { filter: brightness(1.08); } .btn:active { transform: scale(.97); }
+  .btn.sm { font-size: 1.05em; padding: .6em 1.3em; }
+  .btn.ghost { background: #16223f; color: #cbd5e1; border: 1px solid #2c3d63; box-shadow: none; }
+
+  /* ── встроенный ресайзер ───────────────────────── */
+  .rz { position: absolute; right: 0; bottom: 0; width: 2.4em; height: 2.4em;
+    cursor: nwse-resize; z-index: 60; display: flex; align-items: center;
+    justify-content: center; touch-action: none; }
+  .rz svg { width: 1.5em; height: 1.5em; opacity: .85; }
+  .rz:hover svg { opacity: 1; }
+  .rzlabel { position: absolute; right: 2.8em; bottom: .7em; font-size: .9em;
+    background: #1e293b; border: 1px solid #33435f; padding: .3em .65em;
+    border-radius: .5em; color: #cbd5e1; display: none; z-index: 60; white-space: nowrap; }
+  .rzreset { position: absolute; right: .6em; bottom: 2.7em; z-index: 60; display: none;
+    background: #1e293b; border: 1px solid #33435f; color: #fbbf24; font-size: .85em;
+    font-family: inherit; font-weight: 600; padding: .35em .7em; border-radius: .5em;
+    cursor: pointer; white-space: nowrap; }
+  .rzreset:hover { background: #26344e; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hz"></div>
+  <header>
+    <div class="logo" id="logo"></div>
+    <div class="brand"><b>СИЗ·ТРЕНАЖЁР</b><span>Подбор средств защиты по ГОСТ</span></div>
+    <div class="badge-tr">ТР ТС 019/2011</div>
+    <div class="score" id="score">0 / 9</div>
+  </header>
+  <div class="pbar"><i id="pfill"></i></div>
+  <main id="main"></main>
+
+  <div class="rzlabel" id="rzlabel"></div>
+  <button class="rzreset" id="rzreset" title="Вернуть размер 100% × 600">⟲ 100%</button>
+  <div class="rz" id="rz" title="Потяните, чтобы изменить размер тренажёра">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round">
+      <path d="M21 7 7 21"/><path d="M21 13l-8 8"/><path d="M21 19l-2 2"/>
+    </svg>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ═══════════ Встроенные иллюстрации (инлайн-иллюстрации) ═══════════ */
+const I = {
+  shield: `<svg viewBox="0 0 64 64"><path d="M32 5l23 8v17c0 15-9.5 25-23 30C18.5 55 9 45 9 30V13z" fill="#fbbf24" stroke="#0f172a" stroke-width="2.5"/><path d="M22 31l7 7 13-14" stroke="#0f172a" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  helmet: `<svg viewBox="0 0 64 64"><path d="M14 42v-8a18 18 0 0 1 36 0v8" fill="#fbbf24" stroke="#0f172a" stroke-width="2.5"/><path d="M28 13h8v9h-8z" fill="#fde68a" stroke="#0f172a" stroke-width="2.5"/><path d="M20 32h7M37 32h7" stroke="#b45309" stroke-width="2" stroke-linecap="round"/><rect x="7" y="40" width="50" height="8" rx="4" fill="#f59e0b" stroke="#0f172a" stroke-width="2.5"/></svg>`,
+  goggles: `<svg viewBox="0 0 64 64"><path d="M3 32h9M52 32h9" stroke="#64748b" stroke-width="4" stroke-linecap="round"/><rect x="11" y="23" width="18" height="17" rx="7" fill="#7dd3fc" stroke="#0f172a" stroke-width="2.5"/><rect x="35" y="23" width="18" height="17" rx="7" fill="#7dd3fc" stroke="#0f172a" stroke-width="2.5"/><path d="M29 29h6" stroke="#0f172a" stroke-width="2.5"/><path d="M16 28l4-2M40 28l4-2" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round"/></svg>`,
+  glove: `<svg viewBox="0 0 64 64"><rect x="21" y="10" width="6" height="20" rx="3" fill="#34d399" stroke="#0f172a" stroke-width="2.2"/><rect x="28" y="7" width="6" height="23" rx="3" fill="#34d399" stroke="#0f172a" stroke-width="2.2"/><rect x="35" y="10" width="6" height="20" rx="3" fill="#34d399" stroke="#0f172a" stroke-width="2.2"/><path d="M41 24l6-4c2.5-1.5 5 1 3.5 3.5L45 31z" fill="#34d399" stroke="#0f172a" stroke-width="2.2"/><rect x="19" y="27" width="24" height="20" rx="6" fill="#34d399" stroke="#0f172a" stroke-width="2.2"/><rect x="19" y="45" width="24" height="9" rx="3" fill="#a7f3d0" stroke="#0f172a" stroke-width="2.2"/></svg>`,
+  vest: `<svg viewBox="0 0 64 64"><path d="M22 8l10 8 10-8 10 6-5 10v30H17V24l-5-10z" fill="#fb923c" stroke="#0f172a" stroke-width="2.5"/><path d="M32 16v38" stroke="#7c2d12" stroke-width="2"/><rect x="23" y="26" width="6" height="28" rx="1" fill="#fde68a" stroke="#0f172a" stroke-width="1.2"/><rect x="35" y="26" width="6" height="28" rx="1" fill="#fde68a" stroke="#0f172a" stroke-width="1.2"/></svg>`,
+  harness: `<svg viewBox="0 0 64 64"><path d="M20 8c-3 10-3 38 0 48M44 8c3 10 3 38 0 48" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M20 22c8 5 16 5 24 0" stroke="#60a5fa" stroke-width="5" fill="none"/><rect x="18" y="38" width="28" height="7" rx="3" fill="#1d4ed8" stroke="#0f172a" stroke-width="2"/><rect x="29" y="36" width="6" height="11" rx="2" fill="#fbbf24" stroke="#0f172a" stroke-width="2"/><circle cx="32" cy="52" r="5" fill="none" stroke="#cbd5e1" stroke-width="3"/></svg>`,
+  eac: `<svg viewBox="0 0 64 64"><rect x="8" y="14" width="48" height="36" rx="8" fill="#fbbf24" stroke="#0f172a" stroke-width="2.5"/><text x="32" y="39" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" font-weight="700" fill="#0f172a">EAC</text></svg>`,
+  doc: `<svg viewBox="0 0 64 64"><path d="M16 6h24l10 10v42H16z" fill="#e2e8f0" stroke="#0f172a" stroke-width="2.5"/><path d="M40 6v10h10z" fill="#94a3b8" stroke="#0f172a" stroke-width="2.5"/><path d="M22 26h20M22 33h20M22 40h12" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="48" r="5" fill="#fbbf24" stroke="#0f172a" stroke-width="2"/></svg>`,
+  tag: `<svg viewBox="0 0 64 64"><rect x="12" y="10" width="40" height="44" rx="6" fill="#a78bfa" stroke="#0f172a" stroke-width="2.5"/><rect x="12" y="10" width="40" height="13" rx="6" fill="#7c3aed"/><text x="32" y="47" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">1/2</text></svg>`
+};
+
+/* ═══════════ База вопросов ═══════════ */
+const QUESTIONS = [
+  { tag: "Защита головы", icon: "helmet",
+    q: "На стройплощадке возможно падение предметов. Какой стандарт устанавливает актуальные требования к защитным каскам?",
+    opts: [ ["ГОСТ EN 397-2012", 0],
+            ["ГОСТ EN 397-2020", 1],
+            ["ГОСТ 12.4.252-2013", 0] ],
+    a: 1,
+    x: "ГОСТ EN 397-2020 (EN 397:2012+A1:2012) действует с 01.10.2021 и заменил ГОСТ EN 397-2012. Стандарт устанавливает общие технические требования к каскам, защищающим от падающих предметов, и методы испытаний.",
+    chips: ["ГОСТ EN 397-2020", "взамен ГОСТ EN 397-2012"] },
+
+  { tag: "Требования ТР ТС", icon: "helmet",
+    q: "По ТР ТС 019/2011 (п. 4.3): какое максимальное усилие каска может передавать на голову при энергии удара не менее 50 Дж?",
+    opts: [ ["не более 2 кН", 0], ["не более 5 кН", 1], ["не более 10 кН", 0] ],
+    a: 1,
+    x: "Пункт 4.3 (13) ТР ТС 019/2011: каска не должна передавать на голову усилие более 5 кН при энергии удара не менее 50 Дж, а острые падающие предметы с энергией не менее 30 Дж не должны соприкасаться с головой.",
+    chips: ["ТР ТС 019/2011, п. 4.3", "≤ 5 кН при ≥ 50 Дж"] },
+
+  { tag: "Защита глаз", icon: "goggles",
+    q: "При работе УШМ («болгаркой») в глаза могут лететь частицы. Какой действующий стандарт устанавливает общие технические требования к защитным очкам?",
+    opts: [ ["ГОСТ 12.4.253-2013 (с Изменением № 1)", 1],
+            ["ГОСТ 12.4.281-2014", 0],
+            ["ГОСТ EN 397-2020", 0] ],
+    a: 0,
+    x: "Действует ГОСТ 12.4.253-2013 (ЕН 166:2002) с Изменением № 1 (вступило в силу 01.07.2022). Очки защитные по ТР ТС 019/2011 относятся к 1-му классу и подлежат декларированию соответствия.",
+    chips: ["ГОСТ 12.4.253-2013", "1 класс · декларация"] },
+
+  { tag: "Защита рук", icon: "glove",
+    q: "При перемещении листового металла есть риск порезов и проколов. Какой стандарт устанавливает требования к защитным перчаткам?",
+    opts: [ ["ГОСТ 12.4.252-2013", 1],
+            ["ГОСТ 12.4.253-2013", 0],
+            ["ГОСТ Р ЕН 361-2008", 0] ],
+    a: 0,
+    x: "ГОСТ 12.4.252-2013 действует с 01.03.2014, заменил ГОСТ Р 12.4.246-2008. По ТР ТС 019/2011 (п. 4.3): сопротивление порезу тканей — не менее 2 Н/мм, стойкость к проколу — не менее 13 Н.",
+    chips: ["ГОСТ 12.4.252-2013", "взамен ГОСТ Р 12.4.246-2008"] },
+
+  { tag: "Сигнальная одежда", icon: "vest",
+    q: "Дорожный рабочий должен быть заблаговременно виден водителям. Какой класс сигнальной одежды по ГОСТ 12.4.281-2014 обеспечивает наибольшую видимость?",
+    opts: [ ["Класс 1", 0], ["Класс 2", 0], ["Класс 3", 1] ],
+    a: 2,
+    x: "Класс 3 — наибольшие площади сигнальных элементов: фоновый материал не менее 0,8 м², световозвращающий — не менее 0,2 м² (ширина полос ≥ 50 мм). Класс 2: 0,50 и 0,13 м²; класс 1: 0,14 и 0,10 м².",
+    chips: ["ГОСТ 12.4.281-2014", "3 класс = макс. видимость"] },
+
+  { tag: "Защита от падения", icon: "harness",
+    q: "Работа на высоте с риском падения. Какой действующий стандарт устанавливает требования к страховочным привязям?",
+    opts: [ ["ГОСТ Р ЕН 361-2008", 1],
+            ["ГОСТ Р 12.4.224-99", 0],
+            ["ГОСТ Р ЕН 358-2008", 0] ],
+    a: 0,
+    x: "ГОСТ Р ЕН 361-2008 действует с 01.07.2009, заменил устаревший ГОСТ Р 12.4.224-99. ГОСТ Р ЕН 358-2008 — для удерживающих поясов (позиционирование), а не для страховки при падении. СИЗ от падения с высоты — 2 класс, обязательная сертификация.",
+    chips: ["ГОСТ Р ЕН 361-2008", "2 класс · сертификация"] },
+
+  { tag: "Классификация СИЗ", icon: "tag",
+    q: "Согласно п. 5.5 ТР ТС 019/2011, что из перечисленного относится к 1-му классу (простая конструкция, минимальные риски)?",
+    opts: [ ["Очки защитные", 1],
+            ["Каска защитная", 0],
+            ["Страховочная привязь", 0] ],
+    a: 0,
+    x: "1 класс — СИЗ простой конструкции, применяемые при минимальных рисках: подлежат декларированию соответствия. 2 класс — СИЗ сложной конструкции, защищающие от гибели или необратимого вреда здоровью: обязательная сертификация (каски, привязи).",
+    chips: ["ТР ТС 019/2011, п. 5.5", "1 класс → декларация"] },
+
+  { tag: "Маркировка", icon: "eac",
+    q: "СИЗ прошли подтверждение соответствия ТР ТС 019/2011. Какая маркировка должна быть нанесена перед выпуском в обращение?",
+    opts: [ ["Единый знак обращения ЕАС", 1],
+            ["Знак СЕ (соответствие ЕС)", 0],
+            ["Знак ОТК производителя", 0] ],
+    a: 0,
+    x: "Раздел 3 ТР ТС 019/2011: СИЗ, соответствие которых не подтверждено, не маркируются знаком ЕАС и не допускаются к выпуску в обращение. Знак СЕ — маркировка Европейского союза, в ЕАЭС не применяется.",
+    chips: ["ТР ТС 019/2011, раздел 3", "Знак ЕАС"] },
+
+  { tag: "Стандартизация", icon: "doc",
+    q: "Где закреплён перечень стандартов, добровольное применение которых обеспечивает соблюдение требований ТР ТС 019/2011?",
+    opts: [ ["В перечне, утверждённом Решением КТС от 09.12.2011 № 878 (с изменениями)", 1],
+            ["В Трудовом кодексе РФ", 0],
+            ["В ГОСТ 12.4.011-89", 0] ],
+    a: 0,
+    x: "П. 5.1 ТР ТС: применение стандартов из перечня обеспечивает соблюдение регламента на добровольной основе. В перечне — в том числе ГОСТ EN 397, ГОСТ 12.4.252, ГОСТ 12.4.253, ГОСТ 12.4.281.",
+    chips: ["Решение КТС № 878", "перечень стандартов"] }
+];
+const N = QUESTIONS.length;
+const LETTERS = ["А", "Б", "В", "Г"];
+
+/* ═══════════ Состояние ═══════════ */
+const app = document.getElementById("app");
+const main = document.getElementById("main");
+const pfill = document.getElementById("pfill");
+const scoreEl = document.getElementById("score");
+document.getElementById("logo").innerHTML = I.shield;
+
+let qi = 0, score = 0, answered = false, wrong = [];
+
+function setProgress(p) { pfill.style.width = (p * 100).toFixed(1) + "%"; }
+function setScore() { scoreEl.textContent = score + " / " + N; }
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ═══════════ Экраны ═══════════ */
+function renderIntro() {
+  setProgress(0); setScore();
+  const tiles = QUESTIONS.filter((q, i) => [0, 2, 3, 4, 5].includes(i)).map(q => {
+    const names = { "Защита головы": ["Каска", "ГОСТ EN 397-2020"],
+                    "Защита глаз": ["Очки", "ГОСТ 12.4.253-2013"],
+                    "Защита рук": ["Перчатки", "ГОСТ 12.4.252-2013"],
+                    "Сигнальная одежда": ["Сигнальная одежда", "ГОСТ 12.4.281-2014"],
+                    "Защита от падения": ["Страховочная привязь", "ГОСТ Р ЕН 361-2008"] };
+    const n = names[q.tag];
+    return `<div class="tile"><div class="ic">${I[q.icon]}</div><b>${n[0]}</b><span>${n[1]}</span></div>`;
+  }).join("");
+  main.innerHTML = `
+  <div class="screen intro">
+    <h1>Подбор СИЗ в соответствии с <em>ГОСТ</em> и <em>ТР ТС 019/2011</em></h1>
+    <div class="sub">Научитесь подбирать пять самых распространённых средств индивидуальной защиты по действующим стандартам из перечня, обеспечивающего соблюдение требований технического регламента ТР ТС 019/2011 «О безопасности средств индивидуальной защиты». ${N} вопросов с мгновенной проверкой и пояснениями.</div>
+    <div class="tiles">${tiles}</div>
+    <div class="chips">
+      <div class="chip"><b>1 класс</b> — простая конструкция · декларация</div>
+      <div class="chip"><b>2 класс</b> — сложная конструкция · сертификация</div>
+      <div class="chip">Маркировка <b>ЕАС</b></div>
+    </div>
+    <div class="startrow">
+      <button class="btn" data-act="start">Начать тренировку ➔</button>
+      <div class="hint">Уголок ⌟ в правом нижнем углу —<br>встроенный ресайзер (проверка адаптивности)</div>
+    </div>
+  </div>`;
+}
+
+function renderQuestion() {
+  answered = false;
+  const q = QUESTIONS[qi];
+  setProgress(qi / N);
+  const opts = shuffle(q.opts.map((o, i) => ({ t: o[0], ok: i === q.a })));
+  main.innerHTML = `
+  <div class="screen quiz">
+    <div class="qtag"><span class="qnum">Вопрос ${qi + 1} из ${N}</span><span class="qcat">${q.tag}</span></div>
+    <div class="qtext"><div class="ic">${I[q.icon]}</div><p>${q.q}</p></div>
+    <div class="opts" id="opts">
+      ${opts.map((o, i) => `<button class="opt" data-ok="${o.ok ? 1 : 0}"><span class="lt">${LETTERS[i]}</span><span>${o.t}</span></button>`).join("")}
+    </div>
+    <div id="fbwrap"></div>
+    <div class="qhint">Выберите один из вариантов — пояснение со ссылкой на нормативный документ появится сразу после ответа.</div>
+  </div>`;
+  document.querySelectorAll("#opts .opt").forEach(btn => {
+    btn.addEventListener("click", () => answer(btn));
+  });
+}
+
+function answer(btn) {
+  if (answered) return;
+  answered = true;
+  const good = btn.dataset.ok === "1";
+  document.querySelectorAll("#opts .opt").forEach(b => {
+    b.disabled = true;
+    if (b.dataset.ok === "1") b.classList.add("ok");
+  });
+  if (!good) { btn.classList.add("bad"); wrong.push(qi + 1); }
+  else score++;
+  setScore();
+  const q = QUESTIONS[qi];
+  const last = qi === N - 1;
+  document.getElementById("fbwrap").innerHTML = `
+    <div class="fb ${good ? "" : "bad"}">
+      <div class="t ${good ? "ok" : "no"}">${good ? "✔ Верно!" : "✘ Неверно"}</div>
+      <div class="x">${q.x}</div>
+      <div>${q.chips.map(c => `<span class="std">${c}</span>`).join("")}</div>
+      <div class="nextrow"><button class="btn sm" data-act="next">${last ? "Результаты ➔" : "Следующий вопрос ➔"}</button></div>
+    </div>`;
+}
+
+function renderResult() {
+  setProgress(1);
+  const p = Math.round(score / N * 100);
+  const C = 2 * Math.PI * 52;
+  const on = (C * p / 100).toFixed(1);
+  const v = p >= 90 ? ["Эксперт по подбору СИЗ", "Отличный результат: требования регламента и актуальных ГОСТ усвоены."]
+        : p >= 70 ? ["Уверенный специалист", "Хороший результат. Повторите пояснения к вопросам, где ошиблись."]
+        : p >= 50 ? ["Есть пробелы в знаниях", "Изучите ТР ТС 019/2011 и перечень стандартов к нему, затем пройдите тренажёр снова."]
+        : ["Требуется подготовка", "Начните с ТР ТС 019/2011 и перечня обеспечивающих его стандартов, затем повторите попытку."];
+  main.innerHTML = `
+  <div class="screen">
+    <div class="res">
+      <div class="gauge">
+        <svg viewBox="0 0 120 120">
+          <defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/>
+          </linearGradient></defs>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#1e2a48" stroke-width="11"/>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="url(#gg)" stroke-width="11"
+            stroke-linecap="round" stroke-dasharray="${on} ${C.toFixed(1)}" transform="rotate(-90 60 60)"/>
+        </svg>
+        <div class="mid"><b>${p}%</b><span>${score} из ${N}</span></div>
+      </div>
+      <div class="resinfo">
+        <h2>${v[0]}</h2>
+        <div class="msg">${v[1]}</div>
+        <div class="resline">Правильных ответов: <b class="g">${score}</b> &nbsp;·&nbsp; Ошибок: <b class="r">${wrong.length}</b>${wrong.length ? `<br>Ошибки в вопросах: ${wrong.map(w => "№" + w).join(", ")}` : " — безупречное прохождение!"}</div>
+        <div class="resline" style="margin-top:.2em">
+          <span class="std">ТР ТС 019/2011</span><span class="std">ГОСТ EN 397-2020</span><span class="std">ГОСТ 12.4.253-2013</span><span class="std">ГОСТ 12.4.252-2013</span><span class="std">ГОСТ 12.4.281-2014</span><span class="std">ГОСТ Р ЕН 361-2008</span>
+        </div>
+        <div class="nextrow" style="justify-content:flex-start">
+          <button class="btn" data-act="restart">⟳ Пройти заново</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function startQuiz() {
+  qi = 0; score = 0; wrong = [];
+  renderQuestion();
+}
+
+main.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const act = b.dataset.act;
+  if (act === "start" || act === "restart") startQuiz();
+  else if (act === "next") {
+    qi++;
+    if (qi < N) renderQuestion(); else renderResult();
+  }
+});
+
+renderIntro();
+
+/* ═══════════ Масштабирование под любой размер (без потери содержания) ═══════════ */
+function fit() {
+  const r = app.getBoundingClientRect();
+  let u = Math.min(r.width / 56, r.height / 60); // базовый размер 560×600
+  u = Math.max(5.6, Math.min(u, 13));
+  app.style.fontSize = u.toFixed(2) + "px";
+}
+new ResizeObserver(fit).observe(app);
+fit();
+
+/* ═══════════ Встроенный ресайзер ═══════════ */
+const rz = document.getElementById("rz");
+const rzlabel = document.getElementById("rzlabel");
+const rzreset = document.getElementById("rzreset");
+const MIN_W = 340, MIN_H = 430, MAX_H = 600;
+let drag = false;
+
+function maxH() { return Math.min(MAX_H, window.innerHeight); }
+
+rz.addEventListener("pointerdown", e => {
+  drag = true;
+  rz.setPointerCapture(e.pointerId);
+  rzlabel.style.display = "block";
+  e.preventDefault();
+});
+rz.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const w = Math.max(MIN_W, Math.min(e.clientX, window.innerWidth));
+  const h = Math.max(MIN_H, Math.min(e.clientY, maxH()));
+  app.style.width = w + "px";
+  app.style.height = h + "px";
+  rzlabel.textContent = Math.round(w) + " × " + Math.round(h);
+  rzreset.style.display = "block";
+  fit();
+});
+function endDrag() {
+  if (!drag) return;
+  drag = false;
+  const full = app.getBoundingClientRect().width >= window.innerWidth - 1 &&
+               app.getBoundingClientRect().height >= maxH() - 1;
+  if (full) { app.style.width = ""; app.style.height = ""; rzlabel.style.display = "none"; rzreset.style.display = "none"; }
+  else setTimeout(() => { if (!drag) rzlabel.style.display = "none"; }, 1600);
+}
+rz.addEventListener("pointerup", endDrag);
+rz.addEventListener("pointercancel", endDrag);
+rzreset.addEventListener("click", () => {
+  app.style.width = ""; app.style.height = "";
+  rzlabel.style.display = "none"; rzreset.style.display = "none";
+  fit();
+});
+window.addEventListener("resize", () => {
+  if (app.style.width) {
+    const w = Math.min(parseFloat(app.style.width), window.innerWidth);
+    app.style.width = (w >= window.innerWidth ? "" : w + "px");
+  }
+  if (app.style.height) {
+    app.style.height = Math.min(parseFloat(app.style.height), maxH()) + "px";
+  }
+  fit();
+});
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f"}' crossorigin="anonymous"></script>
+</body>
+</html>
